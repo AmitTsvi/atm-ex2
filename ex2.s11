@@ -1,0 +1,87 @@
+. = torg + 1000
+ 
+main:		tstb nCols			;checks if the input is an empty picture - than no processing is needed
+			beq finish
+			tstb nRows
+			beq finish
+
+			movb nRows, r0		;copying the input Img to Output for processing
+			movb nCols, r1
+			mul r0, r1
+			mov #Img, r2
+			mov #Output, r3
+copyloop:	movb (r2)+, (r3)+
+			sub #1, r1
+			bne copyloop
+
+			tstb Enc			;if 1 than first encrypt bytes than encrypt lines, else if 0 first decrypt lines than decrypt bytes
+			bne Bytes
+
+		
+		
+Lines:		movb nCols, r3		;r3 = start of current block pointer and no need to process line 0
+			add #Output, r3		;now r3 points to the start of line 1
+			movb #1, r1			;r1 is shift iterations counter, initialized with 1 for line 1
+lineloop:	movb nCols, r0		;r0 = number of columns in each row act as counter of blocks to process
+blocksloop:	clr r5				;r5 acts as per block shift iterations counter
+			tstb Enc			
+			beq shiftleft		;for encrypt shiftright for decrypt shiftleft
+shiftright:	movb (r3), r4		;r4 acts as swap temp register
+			movb 3(r3), (r3)
+			movb 2(r3), 3(r3)
+			movb 1(r3), 2(r3)
+			movb r4, 1(r3)
+			add #1, r5			;add 1 to shift iterations on this line
+			cmpb r1, r5			;if the number of iterations equals line number than we are finished for this block
+			bne shiftright		
+			br aftershift		;skipping shiftleft for encryption
+shiftleft:	movb 3(r3), r4		;r4 acts as swap temp register
+			movb (r3), 3(r3)
+			movb 1(r3), (r3)
+			movb 2(r3), 1(r3)
+			movb r4, 2(r3)
+			add #1, r5			;add 1 to shift iterations on this line
+			cmpb r1, r5			;if the number of iterations equals line number than we are finished for this block
+			bne shiftleft		
+aftershift:	add #4, r3			;add number of columns to point to the start of the next block
+			sub #4, r0			;each block we finished is 4 columns to process
+			bne blocksloop		;if block counter not 0 than we have more blocks to process in this line
+			add #1, r1			;indicating that next line to be proccessed is current line +1
+			cmpb nRows, r1		;did you finish the last line
+			bpl lineloop		;if next line is valid than process it
+			tstb Enc			;if Enc=1 than we finished after lines encrypt, otherwise Enc=0 continue to decrypt bytes
+			bne finish
+		
+
+Bytes:							;Start of Naomi's part DO NOT ASSUME ANYTHING ABOUT REGISTERS VALUES ON THIS POINT
+
+
+
+
+
+
+
+
+
+
+
+
+								;End of Naomi's part
+			tstb Enc			;if Enc=1 than after bytes encryption we need to do line encryption
+			bne Lines		
+		
+		
+finish:		halt
+
+	
+. = torg + 5000
+nCols: 	.byte 10
+nRows: 	.byte 4
+Enc: 	.byte 1
+Img: 	.byte	 1,  2,  1,  2, 0,   1,   2,    3 
+	 	.byte	 3,  4,  3,  4, 4,   5,   6,    7
+	 	.byte	 5,  6,  5,  6, 10, 11, 12, 13
+	 	.byte	 7,  0,  7,  0, 14, 15, 16, 17
+Hash:	.byte 	2,3,4,5,6,7,10,11,12,13,14,15,16,17,0,1
+.even
+Output: .blkw 20

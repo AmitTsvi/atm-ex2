@@ -46,27 +46,38 @@ shiftleft:	movb 3(r3), r4		;r4 acts as swap temp register
 aftershift:	add #4, r3			;add number of columns to point to the start of the next block
 			sub #4, r0			;each block we finished is 4 columns to process
 			bne blocksloop		;if block counter not 0 than we have more blocks to process in this line
-			add #1, r1			;indicating that next line to be proccessed is current line +1
+			add #1, r1			;indicating that next line to be processed is current line +1
 			cmpb nRows, r1		;did you finish the last line
 			bpl lineloop		;if next line is valid than process it
 			tstb Enc			;if Enc=1 than we finished after lines encrypt, otherwise Enc=0 continue to decrypt bytes
 			bne finish
 		
 
-Bytes:							;Start of Naomi's part DO NOT ASSUME ANYTHING ABOUT REGISTERS VALUES ON THIS POINT
+Bytes:		movb nCols, r0					
+			movb nRows, r1
+			mul r0, r1
+			mov #Output, r2
+			tstb Enc				;if Enc is 1 then we need to encrypt, else we after lines decrypt and we need to decrypt bytes
+			bne encBytes
+			
+decBytes:	mov #Hash, r3		;put hash starting address into r3
+			add #-1,r3			
+			movb #-1, r4		;set r4 into -1, while r4 is the iterator
+bytesLoop:	add #1, r4			;add 1 to r4, each loop iteration
+			add #1, r3			;add 1 to hash adrress in order to iterate over the hash 
+			cmpb (r3), (r2)		;compare if the hash in the i place is equals to the number in the encrypted output
+			bne bytesLoop		;if not equal run again 
+			movb r4, (r2)+		;if equal put the iterator into the output and advance it 
+			sub #1, r1			;subtract one from the total runs 
+			bne decBytes			
+			br finish			;if decryption is finish we are done		
 
-
-
-
-
-
-
-
-
-
-
-
-								;End of Naomi's part
+encBytes:	mov #Hash, r3
+			movb (r2), r4
+			add r4, r3
+			movb (r3), (r2)+
+			sub #1, r1
+			bne encBytes								
 			tstb Enc			;if Enc=1 than after bytes encryption we need to do line encryption
 			bne Lines		
 		
@@ -78,7 +89,7 @@ finish:		halt
 nCols: 	.byte 10
 nRows: 	.byte 4
 Enc: 	.byte 1
-Img: 	.byte	 1,  2,  1,  2, 0,   1,   2,    3 
+Img: 	.byte	 1,  2,  1,  2, 0,   1,   2,    3
 	 	.byte	 3,  4,  3,  4, 4,   5,   6,    7
 	 	.byte	 5,  6,  5,  6, 10, 11, 12, 13
 	 	.byte	 7,  0,  7,  0, 14, 15, 16, 17
